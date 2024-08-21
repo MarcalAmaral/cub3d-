@@ -6,7 +6,7 @@
 /*   By: myokogaw <myokogaw@student.42sp.org.br>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/08/11 11:49:50 by rbutzke           #+#    #+#             */
-/*   Updated: 2024/08/20 23:58:30 by myokogaw         ###   ########.fr       */
+/*   Updated: 2024/08/21 18:51:25 by myokogaw         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@
 #include <math.h>
 #include <string.h>
 #include <errno.h>
+#include "parse.h"
 
 
 // Validações para serem realizadas:
@@ -34,17 +35,20 @@
 //		Validar se o filename passado não é um diretório e se é possível abrir para ler o arquivo
 // 	Segunda validação: Validar as informações do arquivo .cub fornecido
 // 		Validar se o arquivo contempla todas as informações necessárias
-// 		Validar se não há valores repetidos tanto para os identificadores e os valores do RGB dos identificadores C e F
+// 		Validar se não há valores repetidos tanto para os identificadores
 // 		Validar se possui uma textura diferente para cada direção cardial
 //		Validar se os identificadores das texturas são NO, SO, WE, EA
 // 		Validar se as cores rgb dos identificadores C e F estão formatadas corretamente
 // 		Validar se o mapa é composto somente por 1 e 0 e o player (NSWE)
 // 		Validar se o mapa no qual o player (NSWE) se encontra está fechado por paredes
-		
+
 
 static int	init_data(t_data *data);
 // static char **cpy_file(char *file);
 static void	init_coord(t_plr *coord, t_data *data);
+void		clean_parser_struct(t_parser *parser);
+void		clean_line_metadata_struct(t_line_meta *metadata);
+void		set_texture_pathname(t_parser *parser, t_line_meta *metadata, t_texture_index identifier, int lenght_identifier);
 
 void	error_arguments(t_parser *parser)
 {
@@ -62,14 +66,14 @@ void	validating_arguments(t_parser *parser, int ac, char **av)
 {
 	if (ac != 2)
 		parser->error = E_ARG_INVNUM;
-	else if (ft_strnstr(&(av[1][ft_strlen(av[1]) - 4]), ".cub", 4) == NULL)
+	else if (ft_strlen(av[1]) < 4 || ft_strnstr(&(av[1][ft_strlen(av[1]) - 4]), ".cub", 4) == NULL)
 		parser->error = E_ARG_INVEXT;
 	error_arguments(parser);
 	parser->pathname = ft_strdup(av[1]);
 }
 
 void	error_file(t_parser *parser)
-{W
+{
 	if (parser->error == E_OK)
 		return ;
 	else if (parser->error == E_FILE_ISDIR)
@@ -92,48 +96,13 @@ void	validating_file(t_parser *parser)
 	error_file(parser);
 }
 
-int	err_msg_values_of_rgb(char **rgb_colors, char *identifier, int matrix_index, t_error_value_rgb *error_struct)
-{
-	char	*line_err;
-	int		iterator;
-	int		matrix_lenght;
-
-	line_err = ft_itoa(error_struct->file_line);
-	if (error_struct->error_rgb == E_RGB_DIGIT)
-		error_handler("\033[31mError\033[39m\n just digits is needed for especify colors: line ", line_err, ": ", identifier);
-	else if (error_struct->error_rgb == E_RGB_MAXRANGE)
-		error_handler("\033[31mError\033[39m\n Invalid rgb color max 3 digits: line ", line_err, ": ", identifier);
-	ft_putstr_fd(" ", STDERR_FILENO);
-	matrix_lenght = ft_mtrxlen(rgb_colors);
-	iterator = 0;
-	while (iterator < matrix_lenght)
-	{
-		if (iterator == matrix_index)
-		{
-			if (iterator == matrix_lenght - 1)
-				error_handler("\033[31m", rgb_colors[iterator], "\033[39m", NULL);
-			else
-				error_handler("\033[31m", rgb_colors[iterator], "\033[39m", ",");
-			iterator++;
-			continue ;
-		}
-		if (iterator != matrix_lenght - 1)
-			error_handler(rgb_colors[iterator], ",", NULL, NULL);
-		else
-			error_handler(rgb_colors[iterator], NULL, NULL, NULL);
-		iterator++;
-	}
-	free(line_err);
-	return (EXIT_FAILURE);
-}
-
-int	validating_values_of_rgb(t_parser *parser, t_metadata *metadata)
+int	validating_rgb_format(t_parser *parser, t_line_meta *metadata)
 {
 	int	matrix_index;
 	int	char_index;
 
-	matrix_index = -1;
-	while (metadata->rgb_matrix[++matrix_index])
+	matrix_index = 0;
+	while (metadata->rgb_matrix[matrix_index])
 	{
 		char_index = 0;
 		while (metadata->rgb_matrix[matrix_index][char_index] && ft_isdigit(metadata->rgb_matrix[matrix_index][char_index]))
@@ -149,62 +118,118 @@ int	validating_values_of_rgb(t_parser *parser, t_metadata *metadata)
 		{
 			metadata->rgb_matrix_index = matrix_index;
 			metadata->rgb_char_index = char_index;
-			parser->error = E_RGB_MAXRANGE;
+			parser->error = E_RGB_INVRANGE;
 			return (EXIT_FAILURE);
 		}
+		matrix_index++;
 	}
 	return (EXIT_SUCCESS);
 }
 
-void	validating_rgb_pattern(t_parser *parser, t_metadata *metadata)
+
+int		validating_rgb_values(t_parser *parser, t_line_meta *metadata)
+{
+	int	matrix_index;
+	int	rgb_color;
+
+	matrix_index = -1;
+	while (metadata->rgb_matrix[++matrix_index])
+	{
+		rgb_color = ft_atoi(metadata->rgb_matrix[matrix_index]);
+		if (rgb_color < 0 || rgb_color > 255)
+		{
+			metadata->rgb_matrix_index = matrix_index;
+			parser->error = E_RGB_INVRANGE;
+			return (EXIT_FAILURE);
+		}
+		if (*metadata->start_identifier_str == 'C')
+			parser->rgb_array[CEILING][matrix_index] = rgb_color;
+		else if (*metadata->start_identifier_str == 'F')
+			parser->rgb_array[FLOOR][matrix_index] = rgb_color;
+	}
+	return (EXIT_SUCCESS);
+}
+
+void print_wrong_elem_rgb_matrix(t_line_meta *metadata)
+{
+	int		matrix_index;
+	int		wrong_element;
+	char	identifier[2];
+
+	wrong_element = metadata->rgb_matrix_index;
+	identifier[0] = *metadata->start_identifier_str;
+	identifier[1] = ' ';
+	write(STDERR_FILENO, identifier, 2);
+	matrix_index = 0;
+	while (metadata->rgb_matrix[matrix_index])
+	{
+		if (matrix_index != wrong_element && metadata->rgb_matrix[matrix_index + 1] != NULL)
+			error_handler(metadata->rgb_matrix[matrix_index], ",", NULL, NULL);
+		else if (matrix_index != wrong_element && metadata->rgb_matrix[matrix_index + 1] == NULL)
+			error_handler(metadata->rgb_matrix[matrix_index], "\n", NULL, NULL);
+		else if (matrix_index == wrong_element && metadata->rgb_matrix[matrix_index + 1] != NULL)
+			error_handler(RED, metadata->rgb_matrix[matrix_index], RESET, ",");
+		else if (matrix_index == wrong_element && metadata->rgb_matrix[matrix_index + 1] == NULL)
+			error_handler(RED, metadata->rgb_matrix[matrix_index], RESET, "\n");
+		matrix_index++;
+	}
+}
+
+void	err_msg_rgb(t_parser *parser, t_line_meta *metadata)
+{
+	char	*num_line_str;
+
+	if (parser->error == E_OK)
+		return ;
+	num_line_str = ft_itoa(parser->num_line);
+	if (parser->error == E_RGB_INVAMOUNT)
+	{
+		error_handler(ERROR_MSG, "invalid quantity of elements to represent an RGB value: line ", num_line_str, ": ");
+		print_wrong_elem_rgb_matrix(metadata);
+	}
+	else if (parser->error == E_RGB_DIGIT)
+	{
+		error_handler(ERROR_MSG, "just digits is needed to represent RGB colors: line ", num_line_str, ": ");
+		print_wrong_elem_rgb_matrix(metadata);
+	}
+	else if (parser->error == E_RGB_INVRANGE)
+	{
+		error_handler(ERROR_MSG, "invalid range for rgb values, needed 0 <= value >= 255: line ", num_line_str, ": ");
+		print_wrong_elem_rgb_matrix(metadata);
+	}
+	free(num_line_str);
+	clean_parser_struct(parser);
+	clean_line_metadata_struct(metadata);
+	exit (EXIT_FAILURE);
+}
+
+void	validating_rgb_pattern(t_parser *parser, t_line_meta *metadata)
 {
 	int	condition_met;
 
 	condition_met = 0;
-	if (ft_mtrxlen(rgb_matrix) != 3)
+	if (ft_mtrxlen(metadata->rgb_matrix) != 3)
 	{
 		parser->error = E_RGB_INVAMOUNT;
 		condition_met = 1;
 	}
-	else if (!condition_met && validating_values_of_rgb(parser, metadata))
+	else if (!condition_met && validating_rgb_format(parser, metadata))
+		condition_met = 1;
+	else if (!condition_met && validating_rgb_values(parser, metadata))
 		condition_met = 1;
 	err_msg_rgb(parser, metadata);
 }
 
-int	validating_rgb(t_parser *parser, t_line_metadata *metadata)
+int	validating_rgb(t_parser *parser, t_line_meta *metadata)
 {
-	char	**rgb_matrix;
 	char	*rgb_string;
 
-	rgb_setup_string = ft_strtrim(&metadata->end_identifier_str, " \t");
+	rgb_string = ft_strtrim((const char *) metadata->end_identifier_str, " \t\r\n");
 	metadata->rgb_matrix = ft_split(rgb_string, ',');
 	free(rgb_string);
 	if (metadata->rgb_matrix == NULL)
 		return (EXIT_FAILURE);
 	validating_rgb_pattern(parser, metadata);
-
-	if (validating_values_of_rgb(rgb_colors, identifier, line_count))
-	{
-		free(colors);
-		ft_delcmtrx(rgb_colors);
-		return (EXIT_FAILURE);
-	}
-	matrix_index = -1;
-	while(rgb_colors[++matrix_index])
-	{
-		color_value = ft_atoi(rgb_colors[matrix_index]);
-		if (color_value > 255)
-		{
-			ft_putendl_fd("Error\n Invalid rgb range color", STDERR_FILENO);
-			return (EXIT_FAILURE);
-		}
-		else if (color_value < 0)
-		{
-			ft_putendl_fd("Error\n Invalid rgb range color", STDERR_FILENO);
-			return (EXIT_FAILURE);
-		}
-
-	}
 	return (EXIT_SUCCESS);
 }
 
@@ -214,18 +239,23 @@ void	validating_line(t_parser *parser, t_line_meta *line_metadata)
 	parser->num_line += 1;
 	while (line_metadata->line)
 	{
-		if ((ft_strlen(line_metadata->line) == 1 && ft_strncmp(line_metadata->line, "\n"))
-			|| (ft_strlen(line_metadata->line) == 2 && ft_strncmp(line_metadata->line, "\r\n")))
+		if ((ft_strlen(line_metadata->line) == 1 && !ft_strncmp(line_metadata->line, "\n", 1))
+			|| (ft_strlen(line_metadata->line) == 2 && !ft_strncmp(line_metadata->line, "\r\n", 2)))
 			{
 				line_metadata->line = get_next_line(parser->fd);
 				parser->num_line += 1;
+				continue ;
 			}
-		if (line_metadata->start_identifier != NULL)
-			free(line_metadata->start_identifier);
+		if (line_metadata->start_identifier_str != NULL)
+			free(line_metadata->start_identifier_str);
 		line_metadata->start_identifier_str = ft_strtrim(line_metadata->line, " \t");
-		line_metadata->end_indentifier_str = ft_strchr(line_metadata->start_identifier->str, " ");
-		if (ft_strchr(line_metadata->end_identifier_str, "\t") < line_metadata->end_identifier_str)
-			line_metadata->end_identifier = ft_strchr(line_metadata->end_identifier_str, "\t");
+		line_metadata->end_identifier_str = ft_strchr(line_metadata->start_identifier_str, ' ');
+		if (line_metadata != NULL 
+				&& ft_strchr(line_metadata->end_identifier_str, '\t') != NULL 
+				&& ft_strchr(line_metadata->end_identifier_str, '\t') < line_metadata->end_identifier_str)
+			line_metadata->end_identifier_str = ft_strchr(line_metadata->end_identifier_str, '\t');
+		if (line_metadata->end_identifier_str)
+			line_metadata->end_identifier_str = &line_metadata->start_identifier_str[ft_strlen(line_metadata->start_identifier_str) - 1];
 		return ;
 	}
 	return ;
@@ -233,57 +263,76 @@ void	validating_line(t_parser *parser, t_line_meta *line_metadata)
 
 void	clean_parser_struct(t_parser *parser)
 {
-	if (parser->pathname_struct[NORTH] != NULL)
-		free(parser->pathname_struct[NORTH]);
-	if (parser->pathname_struct[SOUTH] != NULL)
-		free(parser->pathname_struct[SOUTH]);
-	if (parser->pathname_struct[WEST] != NULL)
-		free(parser->pathname_struct[WEST]);
-	if (parser->pathname_struct[EAST] != NULL)
-		free(parser->pathname_struct[EAST]);
+	if (parser->pathname_textures[NORTH] != NULL)
+		free(parser->pathname_textures[NORTH]);
+	if (parser->pathname_textures[SOUTH] != NULL)
+		free(parser->pathname_textures[SOUTH]);
+	if (parser->pathname_textures[WEST] != NULL)
+		free(parser->pathname_textures[WEST]);
+	if (parser->pathname_textures[EAST] != NULL)
+		free(parser->pathname_textures[EAST]);
 	if (parser->pathname != NULL)
 		free(parser->pathname);
 	if (parser->fd != -1)
 		close(parser->fd);
 }
 
-void	clean_line_metadata_struct(t_line_metadata *metadata)
+void	clean_line_metadata_struct(t_line_meta *metadata)
 {
 	if (metadata->line != NULL)
 		free(metadata->line);
-	if (metadata->start_identifier_str != NULL);
+	if (metadata->start_identifier_str != NULL)
 		free(metadata->start_identifier_str);
 	if (metadata->rgb_matrix != NULL)
 		ft_delcmtrx(metadata->rgb_matrix);
 }
 
-void	err_msg_get_map_info(t_parser *parser, t_line_metadata *metadata)
+void	err_msg_get_map_info(t_parser *parser, t_line_meta *metadata)
 {
 	char	*num_line_str;
 
-	num_line_str = NULL;
+	num_line_str = ft_itoa(parser->num_line);
 	if (parser->error == E_OK)
 		return ;
 	else if (parser->error == E_IDENT_DUP)
 	{
-		num_line_str = ft_itoa(parser->num_line);
 		error_handler(ERROR_MSG, "duplicated identifier: line ", num_line_str, ": ");
-		error_handler(RED, metadata->start_identifier_line, RESET, "\n");
+		error_handler(RED, metadata->start_identifier_str, RESET, "\n");
 	}
 	else if (parser->error == E_IDENT_INV)
 	{
-		num_line_str = ft_itoa(parser->num_line);
 		error_handler(ERROR_MSG, "invalid identifier: line ", num_line_str, ": ");
-		error_handler(RED, metadata->start_identifier_line, RESET, "\n");
+		error_handler(RED, metadata->start_identifier_str, RESET, "\n");
 	}
-	if (num_line_str != NULL)
-		free(num_line_str);
+	free(num_line_str);
 	clean_parser_struct(parser);
 	clean_line_metadata_struct(metadata);
 	exit (EXIT_FAILURE);
 }
 
-int	set_texture_pathname(t_parser *parser, t_line_meta *metadata, t_texture_index identifier, int lenght_identifier)
+int	identify_identifier(t_parser *parser, t_line_meta *metadata)
+{
+	int	lenght_identifier;
+
+	lenght_identifier = metadata->end_identifier_str - metadata->start_identifier_str;
+	if (!ft_strncmp(metadata->start_identifier_str, "NO", lenght_identifier))
+		set_texture_pathname(parser, metadata, NORTH, lenght_identifier);
+	else if (!ft_strncmp(metadata->start_identifier_str, "SO", lenght_identifier))
+		set_texture_pathname(parser, metadata, SOUTH, lenght_identifier);
+	else if (!ft_strncmp(metadata->start_identifier_str, "WE", lenght_identifier))
+		set_texture_pathname(parser, metadata, WEST, lenght_identifier);
+	else if (!ft_strncmp(metadata->start_identifier_str, "EA", lenght_identifier))
+		set_texture_pathname(parser, metadata, EAST, lenght_identifier);
+	else if (!ft_strncmp(metadata->start_identifier_str, "C", lenght_identifier))
+		validating_rgb(parser, metadata);
+	else if (!ft_strncmp(metadata->start_identifier_str, "F", lenght_identifier))
+		validating_rgb(parser, metadata);
+	else
+		return (EXIT_FAILURE);
+	return (EXIT_SUCCESS);
+}
+
+void	set_texture_pathname(t_parser *parser, t_line_meta *metadata, t_texture_index identifier, int lenght_identifier)
 {
 	if (parser->pathname_textures[identifier] == NULL)
 		parser->pathname_textures[identifier] = ft_strtrim(&metadata->start_identifier_str[lenght_identifier], " \t");
@@ -293,60 +342,23 @@ int	set_texture_pathname(t_parser *parser, t_line_meta *metadata, t_texture_inde
 	return ;
 }
 
-int	get_map_info(t_parser *parser)
+void	get_map_info(t_parser *parser)
 {
 	t_line_meta	metadata_line;
-	int			lenght_identifier;
 
 	ft_bzero(&metadata_line, sizeof(t_line_meta));
 	while (true)
 	{
 		validating_line(parser, &metadata_line);
-		lenght_identifier = metadata_line.end_identifier_str - metadata_line.start_identifier_str;
-		if (metadata_line->line != NULL && lenght_identifier <= 2)
+		if (metadata_line.line != NULL)
 		{
-			if (lenght_identifier == 2)
-			{
-				if (!ft_strncmp(start_identifier_str, "NO", lenght_identifier))
-					set_texture_pathname(parser, metadata_line, NORTH, lenght_identifier);
-				else if (!ft_strncmp(start_identifier_str, "SO", lenght_identifier))
-					set_texture_pathname(parser, metadata_line, SOUTH, lenght_identifier);
-				else if (!ft_strncmp(start_identifier_str, "WE", lenght_identifier))
-					set_texture_pathname(parser, metadata_line, WEST, lenght_identifier);
-				else if (!ft_strncmp(start_identifier_str, "EA", lenght_identifier))
-					set_texture_pathname(parser, metadata_line, EAST, lenght_identifier);
-			}
-			else if (lenght_identifier == 1)
-			{
-				if (!ft_strncmp(start_identifier_str, "C", lenght_identifier))
-				{
-					if (validating_rgb(parser, metadata))
-					{
-						free(content);
-						free(start_identifier_str);
-						close(fd);
-						return (EXIT_FAILURE);
-					}
-				}
-				else if (!ft_strncmp(start_identifier_str, "F", lenght_identifier))
-				{
-					if (validating_rgb(parser, metadata))
-					{
-						free(content);
-						free(start_identifier_str);
-						close(fd);
-						return (EXIT_FAILURE);
-					}
-				}
-			}
-			else
+			if (identify_identifier(parser, &metadata_line))
 				parser->error = E_IDENT_INV;
-			err_msg_get_map_info(parser, &metadata);
+			err_msg_get_map_info(parser, &metadata_line);
 		}
 		else
 			break ;
 	}
-	return (EXIT_SUCCESS);
 }
 
 t_data	*parse(int argc, char **argv)
@@ -354,16 +366,11 @@ t_data	*parse(int argc, char **argv)
 	t_parser parser;
 	t_data	*data;
 	t_plr	*coord;
-	int		fd;
 
 	ft_bzero(&parser, sizeof(parser));
 	validating_arguments(&parser, argc, argv);
-	validating_file(&parser, av[1]);
-	if (get_map_info(data, fd))
-	{
-		free(data);
-		return (NULL);
-	}
+	validating_file(&parser);
+	get_map_info(&parser);
 	data = ft_calloc(1, sizeof(t_data));
 	init_data(data);
 	coord = ft_calloc(1, sizeof(t_plr));

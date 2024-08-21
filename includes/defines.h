@@ -6,7 +6,7 @@
 /*   By: myokogaw <myokogaw@student.42sp.org.br>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/08/13 13:04:39 by rbutzke           #+#    #+#             */
-/*   Updated: 2024/08/20 22:45:16 by myokogaw         ###   ########.fr       */
+/*   Updated: 2024/08/21 18:14:09 by myokogaw         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
  #define DEFINES_H
 
 // define colors
-# define RED "\033[31"
+# define RED "\033[31m"
 # define RESET "\033[39m"
 
 // Std error MSG
