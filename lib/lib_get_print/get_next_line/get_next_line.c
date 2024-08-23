@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   get_next_line.c                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rbutzke <rbutzke@student.42sp.org.br>      +#+  +:+       +#+        */
+/*   By: myokogaw <myokogaw@student.42sp.org.br>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/11/08 08:36:57 by rbutzke           #+#    #+#             */
-/*   Updated: 2024/08/11 12:40:29 by rbutzke          ###   ########.fr       */
+/*   Updated: 2024/08/22 12:46:45 by myokogaw         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,7 +55,7 @@ void	cpy_buff_to_lst(char *buffer, t_get_lst **lst, int *is_space)
 
 t_get_lst	*ft_read_files(int fd)
 {
-	static char	buffer[BUFFER_SIZE +1];
+	static char	buffer[BUFFER_SIZE + 1];
 	t_get_lst	*lst;
 	int			bytes_read;
 	int			is_space;

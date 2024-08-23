@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: rbutzke <rbutzke@student.42so.org.br>      +#+  +:+       +#+         #
+#    By: myokogaw <myokogaw@student.42sp.org.br>    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/06/25 07:47:48 by rbutzke           #+#    #+#              #
-#    Updated: 2024/08/18 11:50:06 by rbutzke          ###   ########.fr        #
+#    Updated: 2024/08/22 18:43:33 by myokogaw         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,7 +16,7 @@ NAME			:= cub3D.a
 
 #-----------------------------------------------------------------------------------------
 # Compiler and flags
-CFLAGS			:= -Wall -Werror -Wextra -O3 -MMD -g3
+CFLAGS			:= -Wall -Werror -Wextra -MMD -g
 CC				:= cc
 O_FLAGS			:= -c
 
@@ -52,6 +52,9 @@ INCLUDES		:= -I $(RAYCASTING)\
 # Source files
 FILE_UTILS		:= utils.c
 FILE_PARSE		:= parse.c
+FILE_PARSE		+= $(addprefix cleaner/, clear.c)
+FILE_PARSE		+= $(addprefix error/, arguments_file.c identifiers.c memalloc.c rgb.c)
+FILE_PARSE		+= $(addprefix validation/, arguments.c file.c identifiers.c rgb.c)
 FILE_HOOK		:= hook.c
 FILE_DRAW_IMAGE	:= draw_image.c
 FILE_RAY		:= ray_casting.c dda.c

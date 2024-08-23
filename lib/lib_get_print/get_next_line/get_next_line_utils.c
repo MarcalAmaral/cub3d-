@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   get_next_line_utils.c                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rbutzke <rbutzke@student.42sp.org.br>      +#+  +:+       +#+        */
+/*   By: myokogaw <myokogaw@student.42sp.org.br>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/11/08 08:38:03 by rbutzke           #+#    #+#             */
-/*   Updated: 2024/03/28 08:09:38 by rbutzke          ###   ########.fr       */
+/*   Updated: 2024/08/22 12:46:46 by myokogaw         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
